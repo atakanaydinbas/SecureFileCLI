@@ -1,5 +1,5 @@
 [package]
-name = "encrypt-file"
+name = "SecureFile"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,3 +8,9 @@ edition = "2021"
 [dependencies]
 rust-crypto = "0.2.36"
 hex = "0.4.3"
+chacha20poly1305 = { version = "0.10.1", features = ["stream"] }
+anyhow = "1.0"
+rand = "0.8"
+zeroize = "1.4"
+rust-argon2 = "1.0"
+rpassword = "7.2.0"
