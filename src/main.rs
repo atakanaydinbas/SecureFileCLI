@@ -95,6 +95,7 @@ fn main() {
         "aead" =>{
             match command.as_str(){
                 "encrypt" => {
+                    // Dosya okunur
                     let dist = file_aead.clone() + ".encrypted";
                     encrypt_file_aead(&file_aead, &dist, &password);
                     println!("File successfully encrypted")
@@ -177,21 +178,28 @@ fn encrypt_file_aead(source_file_path: &str, dist_file_path: &str, password: &st
 
     let mut key = argon2::hash_raw(password.as_bytes(), &salt, &conf)?;
 
+    // AEAD şifreleme algoritması olarak XChaCha20Poly1305 kullanılır
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
+    // Şifreleme modu olarak stream kullanılır
     let mut stream_encryptor = stream::EncryptorBE32::from_aead(aead, nonce.as_ref().into());
 
+    // Dosya okuma ve yazma işlemleri için buffer oluşturulur
     const BUFFER_LEN: usize = 500;
+
     let mut buffer = [0u8; BUFFER_LEN];
 
+    // Dosya okuma ve yazma işlemleri için dosyalar oluşturulur
     let mut source_file = File::open(source_file_path)?;
     let mut dist_file = File::create(dist_file_path)?;
 
+    // Dosyaya salt ve nonce yazılır
     dist_file.write(&salt)?;
     dist_file.write(&nonce)?;
 
     loop {
+        // Dosyadan okunan veri buffer'a yazılır
         let read_file = source_file.read(&mut buffer)?;
-
+        // Okunan veri buffer'a yazılmazsa döngü sonlandırılır
         if read_file == BUFFER_LEN {
             let ciphertext = stream_encryptor
                 .encrypt_next(buffer.as_slice())
@@ -205,7 +213,7 @@ fn encrypt_file_aead(source_file_path: &str, dist_file_path: &str, password: &st
             break;
         }
     }
-    
+    // Dosya işlemleri sonlandırılır
     fs::remove_file(source_file_path)?;
     
     Ok(())
@@ -214,33 +222,39 @@ fn encrypt_file_aead(source_file_path: &str, dist_file_path: &str, password: &st
 fn decrypt_file_aead(encrypted_fp: &str, dist: &str, password: &str,) -> 
     Result<(), anyhow::Error> {
 
+    // Dosyalar oluşturulur ve şifrelenmiş dosya açılır
     let mut encrypted_file = File::open(encrypted_fp)?;
     let mut dist_file = File::create(dist)?;
 
+    // Salt ve nonce dosyadan okunur
     let mut read_file = encrypted_file.read(&mut salt)?;
     if read_file != salt.len() {
         return Err(anyhow!("Error reading salt."));
     }
-
     read_file = encrypted_file.read(&mut nonce)?;
     if read_file != nonce.len() {
         return Err(anyhow!("Error reading nonce."));
     }
 
+    // Argon2id ile şifrelenmiş şifre çözülür
     let conf = conf();
-
     let mut key = argon2::hash_raw(password.as_bytes(), &salt, &conf)?;
 
+    // AEAD şifreleme algoritması olarak XChaCha20Poly1305 kullanılır
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
+
+    // Şifreleme çözme modu olarak stream kullanılır
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
 
     const BUFFER_LEN: usize = 500 + 16;
     let mut buffer = [0u8; BUFFER_LEN];
 
     loop {
+        // Dosyadan okunan veri buffer'a yazılır
         let read_file = encrypted_file.read(&mut buffer)?;
-
+        // Okunan veri buffer'a yazılmazsa döngü sonlandırılır
         if read_file == BUFFER_LEN {
+            // Dosyadan okunan veri şifre çözülür ve dist_file'a yazılır
             let plaintext = stream_decryptor
                 .decrypt_next(buffer.as_slice())
                 .map_err(|err| anyhow!("Decrypting large file: {}", err))?;
@@ -248,6 +262,7 @@ fn decrypt_file_aead(encrypted_fp: &str, dist: &str, password: &str,) ->
         } else if read_file == 0 {
             break;
         } else {
+            // Dosyadan okunan veri şifre çözülür ve dist_file'a yazılır
             let plaintext = stream_decryptor
                 .decrypt_last(&buffer[..read_file])
                 .map_err(|err| anyhow!("Decrypting large file: {}", err))?;
@@ -255,7 +270,7 @@ fn decrypt_file_aead(encrypted_fp: &str, dist: &str, password: &str,) ->
             break;
         }
     }
-
+    // Dosya işlemleri sonlandırılır
     fs::remove_file(encrypted_fp)?;
     Ok(())
 }
