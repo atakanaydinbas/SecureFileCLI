@@ -81,7 +81,7 @@ Decrypt a File with AEAD:
 SecureFileCLI decrypt encrypted.aead mypassword aead
 ```
 ### Contributing
-Contributions to SecureFileCLI are welcome! You can contribute by reporting issues, suggesting new features, or submitting pull requests. Please review our Contribution Guidelines for more information.
+Contributions to SecureFileCLI are welcome! You can contribute by reporting issues, suggesting new features, or submitting pull requests.
 
 ### Contact
 - Email: atakanaydinbas@gmail.com
